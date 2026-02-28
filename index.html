@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>🔥 全班秒刷 (終於自由了！)</h2>
+  <h2>🔥 全班秒刷 (我們終於成功了！)</h2>
   <div id="q-box">
     <b id="qt">題目載入中...</b><br><span id="opts"></span>
   </div>
@@ -88,20 +88,38 @@
     requestAnimationFrame(tick);
   }
 
-  // 處理抓到的學生答案並傳給 API
+ // 處理抓到的學生答案並傳給 API
   function processMarker(marker){
     var id = marker.id;
     if(!scannedMap[id]){
       scannedMap[id] = true; // 鎖定該學生，避免重複狂刷
-      var ans = ["A","B","C","D"][marker.rotation];
+      
+      // 計算紙卡的旋轉角度來判斷 A, B, C, D
+      var cx = (marker.corners[0].x + marker.corners[1].x + marker.corners[2].x + marker.corners[3].x) / 4;
+      var cy = (marker.corners[0].y + marker.corners[1].y + marker.corners[2].y + marker.corners[3].y) / 4;
+      var dx = marker.corners[0].x - cx;
+      var dy = marker.corners[0].y - cy;
+      var angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      
+      var ans = "A";
+      if(angle > -180 && angle <= -90) ans = "A"; // 左上
+      else if(angle > -90 && angle <= 0) ans = "B"; // 右上
+      else if(angle > 0 && angle <= 90) ans = "C";  // 右下
+      else ans = "D"; // 左下
+
       rD.innerHTML = "🔄 抓到 " + id + " 號選 " + ans + "... 傳送中<br>" + rD.innerHTML;
       
+      // 傳送成績
       fetch(API_URL + "?action=record&id=" + id + "&ans=" + ans)
         .then(res => res.json())
         .then(data => { rD.innerHTML = "✅ " + data.message + "<br>" + rD.innerHTML; })
-        .catch(e => { rD.innerHTML = "❌ 傳送失敗<br>" + rD.innerHTML; scannedMap[id] = false; });
+        .catch(e => { 
+          rD.innerHTML = "❌ 傳送失敗，請檢查 Google 權限<br>" + rD.innerHTML; 
+          scannedMap[id] = false; 
+        });
     }
   }
 </script>
 </body>
+
 </html>
