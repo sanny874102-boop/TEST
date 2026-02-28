@@ -18,6 +18,8 @@
 <body>
     <h2>🔥 全班秒刷測驗系統</h2>
     
+    <iframe id="secret-door" style="display:none;"></iframe>
+
     <div class="q-box" id="q-box">
         <h3 id="q-progress" style="color:#e74c3c; margin-top:0; text-align:center;"></h3>
         <h3 id="qt" style="margin:5px 0;"></h3>
@@ -85,28 +87,19 @@
             scanBtn.innerText = "⏳ 等待大腦..."; nxtBtn.innerText = "⏳ 換題中...";
             rD.innerHTML = "⏳ 正在同步大螢幕題目...";
 
-            // 🌟 終極殺招：回歸 GET + 無敵潛伏模式 (no-cors)
-            // 大腦不會當機，Safari 也不會報錯了！
+            // 🌟 終極殺招：不透過 fetch，直接用 iframe 打開網址，Safari 絕對擋不住！
             let url = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
+            
+            document.getElementById('secret-door').src = url;
 
-            fetch(url, { mode: 'no-cors' }).then(() => {
-                setTimeout(() => {
-                    rD.innerHTML = `✅ 大螢幕已切換！`;
-                    unlockButtons(scanBtn, nxtBtn);
-                }, 1000); // 讓大腦寫 1 秒鐘，然後優雅解鎖
-            }).catch(e => {
-                setTimeout(() => {
-                    rD.innerHTML = `✅ 大螢幕已切換！`;
-                    unlockButtons(scanBtn, nxtBtn);
-                }, 1000);
-            });
-        }
-
-        function unlockButtons(scanBtn, nxtBtn) {
-            scannedMap = {}; 
-            scanBtn.disabled = false; nxtBtn.disabled = false;
-            nxtBtn.innerText = "⏭️ 換下一題";
-            if(scanActive) scanBtn.innerText = "🛑 停止掃描"; else scanBtn.innerText = "🎥 2. 開啟連續掃描";
+            // 給大腦 1.5 秒鐘寫字，然後直接優雅解鎖！
+            setTimeout(() => {
+                rD.innerHTML = `✅ 大螢幕已切換！`;
+                scannedMap = {}; 
+                scanBtn.disabled = false; nxtBtn.disabled = false;
+                nxtBtn.innerText = "⏭️ 換下一題";
+                if(scanActive) scanBtn.innerText = "🛑 停止掃描"; else scanBtn.innerText = "🎥 2. 開啟連續掃描";
+            }, 1500);
         }
 
         function startScan() {
@@ -145,7 +138,6 @@
                         scannedMap[id] = true;
                         rD.innerHTML = `🔄 抓到 ${id} 號選 ${ans}... 傳送中`;
                         
-                        // 成績傳送維持最穩定的 GET
                         let url = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
                         fetch(url)
                         .then(res => res.json())
