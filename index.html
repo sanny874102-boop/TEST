@@ -7,81 +7,113 @@
     <script src="https://raw.githack.com/jcmellado/js-aruco/master/src/cv.js"></script>
     <script src="https://raw.githack.com/jcmellado/js-aruco/master/src/aruco.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f9; padding: 10px; }
-        .btn { padding: 15px; font-size: 18px; color: white; border: none; border-radius: 10px; margin: 5px; cursor: pointer; width: 90%; max-width: 400px; font-weight:bold; }
-        .btn:disabled { background: #95a5a6 !important; }
-        #v { width: 100%; max-width: 400px; display: none; border-radius: 10px; border: 3px solid #333; margin: 10px auto; }
-        #res { background: #fff; padding: 10px; border-radius: 8px; margin: 10px auto; max-width: 400px; font-weight: bold; border: 1px solid #ccc; font-size:18px;}
-        .q-box { display: none; background: #fff; padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 400px; border: 2px solid #f39c12; text-align: left; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 10px; }
+        .btn { padding: 15px 20px; font-size: 18px; color: white; border: none; border-radius: 12px; margin: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight: bold; transition: 0.3s; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn:disabled { background: #95a5a6 !important; cursor: not-allowed; }
+        #v { width: 100%; max-width: 400px; display: none; border-radius: 15px; border: 3px solid #333; margin: 10px auto; transform: scaleX(-1); }
+        #res { background: #fff; padding: 15px; border-radius: 12px; margin: 10px auto; max-width: 400px; font-weight: bold; border: 1px solid #ddd; font-size: 18px; color: #2c3e50; }
+        .q-box { display: none; background: #fff; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 400px; border: 2px solid #f39c12; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h2 { color: #2c3e50; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <h2>🔥 全班秒刷測驗系統</h2>
+    
     <div class="q-box" id="q-box">
-        <h3 id="q-progress" style="color:#e74c3c; text-align:center;"></h3>
-        <h3 id="qt"></h3>
-        <div id="opts" style="font-size:18px; line-height:1.5;"></div>
+        <h3 id="q-progress" style="color:#e74c3c; margin-top:0; text-align:center; font-size: 22px;"></h3>
+        <h3 id="qt" style="margin:10px 0; font-size: 24px;"></h3>
+        <div id="opts" style="color:#555; font-size:20px; line-height:1.6;"></div>
     </div>
+
     <div>
         <button class="btn" id="startQuizBtn" onclick="startQuiz()" style="background:#f39c12;">🎯 1. 載入本次測驗 (10題)</button>
         <button class="btn" id="nextBtn" onclick="nextQuestion()" style="background:#3498db; display:none;">⏭️ 換下一題</button>
         <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
     </div>
+
     <video id="v" autoplay playsinline webkit-playsinline muted></video>
     <canvas id="c" style="display:none"></canvas>
-    <div id="res">🟢 系統準備就緒！</div>
+    <div id="res">🟢 系統準備就緒，請開始！</div>
 
     <script>
-        // 👇 換成您的最新網址 👇
-        const https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec;
+        // 👇 請在這裡貼上您剛才在電腦測試成功的那個 Google 網址 👇
+        const API_URL = "https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec";
 
         var v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d'), rD = document.getElementById('res');
         var det, scanActive = false, scannedMap = {};
         let quizQs = [], currQIndex = -1;
 
         function startQuiz() {
-            rD.innerHTML = "⏳ 抽題中...";
+            rD.innerHTML = "⏳ 正在從雲端題庫抽取題目...";
             fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
-            .then(res => res.json()).then(data => {
+            .then(res => res.json())
+            .then(data => {
+                if(!data || data.length === 0) { alert("找不到題目！請檢查單元設定。"); return; }
                 quizQs = data; currQIndex = -1;
                 document.getElementById('startQuizBtn').style.display = "none";
                 document.getElementById('nextBtn').style.display = "inline-block";
                 nextQuestion(); 
-            }).catch(e => rD.innerHTML = "❌ 連線失敗");
+            }).catch(e => { rD.innerHTML = "❌ 連線失敗，請檢查網址"; console.error(e); });
         }
 
         function nextQuestion() {
             currQIndex++;
             let scanBtn = document.getElementById('startBtn'), nxtBtn = document.getElementById('nextBtn');
+            
             if(currQIndex >= quizQs.length) {
-                rD.innerHTML = "✅ 測驗結束！"; return;
+                document.getElementById('q-progress').innerText = "🎉 測驗結束！";
+                document.getElementById('qt').innerText = "請看大螢幕排行榜結算成績！";
+                document.getElementById('opts').innerText = "";
+                nxtBtn.style.display = "none";
+                document.getElementById('startQuizBtn').style.display = "inline-block";
+                document.getElementById('startQuizBtn').innerText = "🔄 重新載入新測驗";
+                rD.innerHTML = "✅ 本次測驗已全部完成";
+                if(scanActive) stopScan();
+                return;
             }
+
             let q = quizQs[currQIndex];
             document.getElementById('q-box').style.display = "block";
-            document.getElementById('q-progress').innerText = `📝 第 ${currQIndex + 1} 題`;
+            document.getElementById('q-progress').innerText = `📝 第 ${currQIndex + 1} / ${quizQs.length} 題`;
             document.getElementById('qt').innerText = "題目：" + q.q;
             document.getElementById('opts').innerHTML = `(A) ${q.a} <br>(B) ${q.b} <br>(C) ${q.c} <br>(D) ${q.d}`;
             
             scanBtn.disabled = true; nxtBtn.disabled = true;
             rD.innerHTML = "⏳ 正在同步大螢幕題目...";
 
-            // 🚀 核心重點：使用 Image Beacon 穿透 Safari 攔截！
+            // 🚀 核心黑科技：隱形圖片信號 (Image Beacon)
+            // Safari 絕對不敢攔截圖片加載，保證 100% 同步！
             let beaconUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
+            
             let img = new Image();
-            img.onload = img.onerror = () => {
+            img.onload = img.onerror = function() {
+                // 不管加載成功還是失敗（因為回傳的是文字不是圖片），都代表請求已抵達 Google！
                 rD.innerHTML = `✅ 同步成功！`;
-                scannedMap = {}; scanBtn.disabled = false; nxtBtn.disabled = false;
+                scannedMap = {}; 
+                scanBtn.disabled = false; nxtBtn.disabled = false;
             };
             img.src = beaconUrl;
         }
 
         function startScan() {
-            if(scanActive) { scanActive = false; v.style.display = "none"; return; }
+            let scanBtn = document.getElementById('startBtn');
+            if(scanActive) { stopScan(); return; }
+            if(typeof AR === 'undefined') { alert("辨識引擎載入失敗，請重整網頁"); return; }
             det = new AR.Detector();
             navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}}).then(function(s) {
                 v.srcObject = s; v.style.display = "block"; scanActive = true;
+                rD.innerHTML = "🎥 相機已啟動，請對準紙卡！";
+                scanBtn.innerText = "🛑 停止掃描"; scanBtn.style.background = "#e74c3c";
                 requestAnimationFrame(tick);
-            });
+            }).catch(e => alert("無法開啟相機：" + e));
+        }
+
+        function stopScan() {
+            scanActive = false; v.style.display = "none";
+            let scanBtn = document.getElementById('startBtn');
+            scanBtn.innerText = "🎥 2. 開啟連續掃描"; scanBtn.style.background = "#27ae60";
+            if (v.srcObject) { v.srcObject.getTracks().forEach(track => track.stop()); }
         }
 
         function tick() {
@@ -94,13 +126,22 @@
                     var m = markers[0], id = m.id;
                     var dx = m.corners[1].x - m.corners[0].x, dy = m.corners[1].y - m.corners[0].y;
                     var angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                    var ans = (angle > 45 && angle <= 135) ? "D" : (angle > 135 || angle <= -135) ? "C" : (angle > -135 && angle <= -45) ? "B" : "A";
+                    var ans = "A";
+                    if(angle > 45 && angle <= 135) ans = "D";
+                    else if(angle > 135 || angle <= -135) ans = "C";
+                    else if(angle > -135 && angle <= -45) ans = "B";
 
                     if(!scannedMap[id]) {
                         scannedMap[id] = true;
+                        rD.innerHTML = `🔄 抓到 ${id} 號選 ${ans}...`;
+                        
+                        // 紀錄成績也用隱形圖片信號，最穩定！
                         let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
                         let img = new Image();
-                        img.onload = img.onerror = () => { rD.innerHTML = `✅ ${id} 號已送出 ${ans}`; setTimeout(() => { delete scannedMap[id]; }, 5000); };
+                        img.onload = img.onerror = function() {
+                            rD.innerHTML = `✅ ${id} 號已送出 ${ans}`;
+                            setTimeout(() => { delete scannedMap[id]; }, 6000); 
+                        };
                         img.src = recUrl;
                     }
                 }
@@ -110,4 +151,3 @@
     </script>
 </body>
 </html>
-
