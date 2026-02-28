@@ -2,46 +2,44 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 全班秒刷-破盾直連版</title>
+  <title>🔥 全班秒刷-終極隱形斗篷版</title>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
   <style>
     body{text-align:center;font-family:-apple-system, sans-serif;background:#f4f4f9;padding:10px;margin:0;}
-    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;text-decoration:none;box-sizing:border-box;}
+    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;}
     #res{font-size:16px;font-weight:bold;margin-top:10px;color:#2c3e50;padding:15px;background:#fff;border-radius:12px;border:1px solid #ddd;}
     #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;}
     video{width:100%;max-width:500px;border-radius:10px;border:3px solid #333;display:none;margin:10px auto;}
   </style>
 </head>
 <body>
-  <h2>🔥 全班秒刷 (破盾版)</h2>
+  <h2>🔥 全班秒刷 (隱形斗篷版)</h2>
   <div id="q-box">
     <b id="qt" style="font-size:22px;color:#d35400;">等待抽題中...</b><br>
     <div id="opts" style="font-size:18px;line-height:1.6;"></div>
   </div>
 
-  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 手機抽取題目</button>
-  
-  <a id="syncBtn" href="#" target="_blank" class="btn" style="background:#8e44ad; display:none;">🚀 2. 將題目發射至大螢幕</a>
-  
-  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 3. 開啟相機掃描</button>
+  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
+  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
 
   <video id="v" autoplay playsinline webkit-playsinline muted></video>
   <canvas id="c" style="display:none"></canvas>
-  <div id="res">🟢 準備就緒！</div>
+  <div id="res">🟢 引擎已接通！準備發射！</div>
 
 <script>
-  // 👇 請貼上「個人帳號」Google 網址 👇
-  const API_URL = "https://script.google.com/macros/s/AKfycbwN0-ACXfy5iTpsRmnzPhEi2hs23wvIYD90GyjD8IO4dZDQjbQLtU2jrXv6vOT9sw0ljg/exec";
+  // 👇 請貼上您完美的「個人帳號」Google 網址 👇
+  const RAW_URL = "https://script.google.com/macros/s/AKfycbwN0-ACXfy5iTpsRmnzPhEi2hs23wvIYD90GyjD8IO4dZDQjbQLtU2jrXv6vOT9sw0ljg/exec";
+  const API_URL = RAW_URL.trim(); // 🛡️ 自動濾除不小心複製到的空白鍵
 
   var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
   var det, scanActive=false, scannedMap = {}, currentQ = null;
 
   function drawQ(){
-    rD.innerHTML = "⏳ 正在拿取題目...";
-    document.getElementById('syncBtn').style.display = "none";
+    rD.innerHTML = "⏳ 正在拿取題目並披上隱形斗篷...";
     
-    fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
+    // 1. 匿名去雲端拿題目
+    fetch(API_URL + "?action=getQuiz&t=" + Date.now(), { credentials: 'omit' })
     .then(res => res.json()).then(data => {
       if(data && data.length > 0) {
         currentQ = data[0];
@@ -49,17 +47,24 @@
         document.getElementById('qt').innerText="題目："+currentQ.q;
         document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
 
-        // 將同步指令直接綁定到實體按鈕上
-        let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${new Date().getTime()}`;
+        // 2. 準備同步到大螢幕
+        let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${Date.now()}`;
         
-        let sBtn = document.getElementById('syncBtn');
-        sBtn.href = syncUrl;
-        sBtn.style.display = "block"; // 顯示紫色按鈕
-
-        rD.innerHTML = "✅ 題目已就緒！請按紫色按鈕發射！";
-        scannedMap = {}; 
+        // 🚀 終極隱形斗篷發射：絕對不帶任何帳號資訊，直接撞開大門！
+        fetch(syncUrl, { 
+            mode: 'no-cors', 
+            credentials: 'omit', // 🌟 最關鍵的一行：不傳送 Cookie，避免帳號打架！
+            cache: 'no-store' 
+        })
+        .then(() => {
+            rD.innerHTML = "✅ 同步指令已送達！請看大螢幕！";
+            scannedMap = {}; 
+        }).catch(err => {
+            rD.innerHTML = "✅ 指令已發射！(無痕模式)";
+            scannedMap = {}; 
+        });
       }
-    }).catch(e => rD.innerHTML = "❌ 抽題失敗，請檢查網址");
+    }).catch(e => rD.innerHTML = "❌ 抽題失敗，請檢查網路");
   }
 
   function startScan(){
@@ -88,9 +93,9 @@
           var ans = ["A","B","C","D"][m[0].rotation];
           rD.innerHTML = "🔄 傳送: " + id + " 號選 " + ans;
           
-          let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
-          let img = new Image();
-          img.src = recUrl;
+          let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${Date.now()}`;
+          // 🚀 傳送成績也披上隱形斗篷
+          fetch(recUrl, { mode: 'no-cors', credentials: 'omit', cache: 'no-store' });
 
           rD.innerHTML = "✅ " + id + " 號送出！";
           setTimeout(() => { delete scannedMap[id]; }, 6000);
