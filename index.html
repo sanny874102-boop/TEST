@@ -35,7 +35,7 @@
     <div id="res">🟢 系統準備就緒，請載入測驗！</div>
 
     <script>
-        // 👇 這裡請貼上妳的「Google 網址」 👇
+        // 👇 這裡請貼上妳的「最新 Google 網址」 👇
         const API_URL = "https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec";
 
         var v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d'), rD = document.getElementById('res');
@@ -48,14 +48,14 @@
             .then(res => res.json())
             .then(data => {
                 if(data.length === 0) {
-                    alert("找不到題目！請檢查 QuestionBank 單元設定是否正確。");
+                    alert("找不到題目！請檢查單元設定。");
                     rD.innerHTML = "❌ 找不到題目"; return;
                 }
                 quizQs = data; currQIndex = -1;
                 document.getElementById('startQuizBtn').style.display = "none";
                 document.getElementById('nextBtn').style.display = "inline-block";
                 nextQuestion(); 
-            }).catch(e => rD.innerHTML = "❌ 題庫連線失敗，請檢查網址");
+            }).catch(e => rD.innerHTML = "❌ 題庫連線失敗");
         }
 
         function nextQuestion() {
@@ -71,7 +71,6 @@
                 document.getElementById('startQuizBtn').style.display = "inline-block";
                 document.getElementById('startQuizBtn').innerText = "🔄 重新載入新測驗";
                 rD.innerHTML = "✅ 本次測驗已全部完成";
-                
                 if(scanActive) {
                     scanActive = false; v.style.display = "none";
                     scanBtn.innerText = "🎥 2. 開啟連續掃描";
@@ -86,32 +85,25 @@
             document.getElementById('qt').innerText = "題目：" + q.q;
             document.getElementById('opts').innerHTML = `(A) ${q.a} <br>(B) ${q.b} <br>(C) ${q.c} <br>(D) ${q.d}`;
             
-            scanBtn.disabled = true;
-            nxtBtn.disabled = true;
-            scanBtn.innerText = "⏳ 換題中...";
-            nxtBtn.innerText = "⏳ 切換中...";
-            rD.innerHTML = "⏳ 正在同步大螢幕題目，請稍候 1 秒...";
+            scanBtn.disabled = true; nxtBtn.disabled = true;
+            scanBtn.innerText = "⏳ 等待大腦..."; nxtBtn.innerText = "⏳ 換題中...";
+            rD.innerHTML = "⏳ 正在同步大螢幕題目...";
 
+            // 最標準的 GET 傳輸，大腦不當機就絕對成功！
             let url = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
 
-            // 🌟 終極殺招：使用 mode: 'no-cors'，Apple 就絕對攔截不到錯誤了！
-            fetch(url, { mode: 'no-cors' }).then(() => {
-                // 給大腦 1 秒鐘的寫入時間，然後直接霸氣解鎖！
-                setTimeout(() => unlockButtons(scanBtn, nxtBtn), 1000);
+            fetch(url).then(res => res.json()).then(d => {
+                rD.innerHTML = `✅ 大螢幕已切換！`;
+                scannedMap = {}; 
+                scanBtn.disabled = false; nxtBtn.disabled = false;
+                nxtBtn.innerText = "⏭️ 換下一題";
+                if(scanActive) scanBtn.innerText = "🛑 停止掃描";
+                else scanBtn.innerText = "🎥 2. 開啟連續掃描";
             }).catch(e => {
-                setTimeout(() => unlockButtons(scanBtn, nxtBtn), 1000);
+                rD.innerHTML = `❌ 換題連線失敗，請重試`;
+                scanBtn.disabled = false; nxtBtn.disabled = false;
+                nxtBtn.innerText = "⏭️ 再試一次換題";
             });
-        }
-
-        // 解鎖按鈕的獨立函數
-        function unlockButtons(scanBtn, nxtBtn) {
-            rD.innerHTML = `✅ 題目切換成功！`;
-            scannedMap = {}; // 清空前一題的紀錄
-            scanBtn.disabled = false;
-            nxtBtn.disabled = false;
-            nxtBtn.innerText = "⏭️ 換下一題";
-            if(scanActive) scanBtn.innerText = "🛑 停止掃描";
-            else scanBtn.innerText = "🎥 2. 開啟連續掃描";
         }
 
         function startScan() {
