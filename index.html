@@ -18,7 +18,16 @@
 <body>
     <h2>🔥 全班秒刷測驗系統</h2>
     
-    <iframe id="secret-door" style="display:none;"></iframe>
+    <form id="brain-form" target="brain-iframe" method="POST" style="display:none;">
+        <input type="hidden" name="action" value="setQuestion">
+        <input type="hidden" name="q" id="fq">
+        <input type="hidden" name="a" id="fa">
+        <input type="hidden" name="b" id="fb">
+        <input type="hidden" name="c" id="fc">
+        <input type="hidden" name="d" id="fd">
+        <input type="hidden" name="ans" id="fans">
+    </form>
+    <iframe name="brain-iframe" style="display:none;"></iframe>
 
     <div class="q-box" id="q-box">
         <h3 id="q-progress" style="color:#e74c3c; margin-top:0; text-align:center;"></h3>
@@ -49,10 +58,7 @@
             fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
             .then(res => res.json())
             .then(data => {
-                if(data.length === 0) {
-                    alert("找不到題目！請檢查單元設定。");
-                    rD.innerHTML = "❌ 找不到題目"; return;
-                }
+                if(data.length === 0) { alert("找不到題目！請檢查單元設定。"); rD.innerHTML = "❌ 找不到題目"; return; }
                 quizQs = data; currQIndex = -1;
                 document.getElementById('startQuizBtn').style.display = "none";
                 document.getElementById('nextBtn').style.display = "inline-block";
@@ -87,12 +93,19 @@
             scanBtn.innerText = "⏳ 等待大腦..."; nxtBtn.innerText = "⏳ 換題中...";
             rD.innerHTML = "⏳ 正在同步大螢幕題目...";
 
-            // 🌟 終極殺招：不透過 fetch，直接用 iframe 打開網址，Safari 絕對擋不住！
-            let url = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
+            // 🌟 啟動古董級表單發射器！Safari 絕對不敢擋！
+            document.getElementById('fq').value = q.q;
+            document.getElementById('fa').value = q.a;
+            document.getElementById('fb').value = q.b;
+            document.getElementById('fc').value = q.c;
+            document.getElementById('fd').value = q.d;
+            document.getElementById('fans').value = q.ans;
             
-            document.getElementById('secret-door').src = url;
+            let form = document.getElementById('brain-form');
+            form.action = API_URL;
+            form.submit(); // 發射包裹！
 
-            // 給大腦 1.5 秒鐘寫字，然後直接優雅解鎖！
+            // 給大腦 1.5 秒的寫字時間，然後完美解鎖！
             setTimeout(() => {
                 rD.innerHTML = `✅ 大螢幕已切換！`;
                 scannedMap = {}; 
