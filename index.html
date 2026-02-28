@@ -1,66 +1,130 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>最終連動測試版</title>
-    <script src="https://raw.githack.com/jcmellado/js-aruco/master/src/cv.js"></script>
-    <script src="https://raw.githack.com/jcmellado/js-aruco/master/src/aruco.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
-        .btn { padding: 15px; font-size: 18px; color: white; border: none; border-radius: 12px; margin: 10px; width: 90%; font-weight: bold; }
-        #res { background: #fff; padding: 15px; border-radius: 12px; margin: 10px auto; border: 2px solid #ddd; font-size: 16px; word-break: break-all; }
-        .debug-info { font-size: 12px; color: #7f8c8d; margin-top: 20px; text-align: left; background: #eee; padding: 10px; border-radius: 5px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>🔥 全班秒刷 (老師加油！最後一步)</title>
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
+  <style>
+    body{text-align:center;font-family:sans-serif;background:#f0f0f0;padding:10px;margin:0;}
+    video{width:100%;max-width:500px;border-radius:10px;border:3px solid #333;background:#000;display:none;margin:0 auto;}
+    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:10px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;}
+    #res{font-size:16px;font-weight:bold;margin-top:10px;color:#333;height:150px;overflow-y:auto;text-align:left;padding:10px;background:#fff;border-radius:10px;border:1px solid #ccc;}
+    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+    #qt { font-size: 22px; color: #d35400; }
+    #opts { font-size: 18px; color: #2c3e50; line-height: 1.6; }
+  </style>
 </head>
 <body>
-    <h2>🚀 最終連動測試</h2>
+  <h2>🔥 全班秒刷測驗系統</h2>
+  
+  <div id="q-box">
+    <b id="qt">題目載入中...</b><br>
+    <div id="opts"></div>
+  </div>
+
+  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
+  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
+  
+  <video id="v" autoplay playsinline webkit-playsinline muted></video>
+  <canvas id="c" style="display:none"></canvas>
+  <div id="res">🟢 引擎已接通，請先點「隨機抽題」！</div>
+
+<script>
+  // 👇 重要！請在此貼上您測試成功的那個 Google 部署網址 (script.google.com 開頭) 👇
+  const API_URL = "https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec";
+
+  var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
+  var det, scanActive=false, scannedMap = {}, currentQ = null;
+
+  // 1. 抽題邏輯
+  function drawQ(){
+    rD.innerHTML = "⏳ 正在雲端抽題並同步大螢幕...";
+    document.getElementById('drawBtn').disabled = true;
     
-    <div id="res">🟢 請先按「載入測試」</div>
+    // 先去向 Google 要一題
+    fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
+    .then(res => res.json())
+    .then(data => {
+      if(data && data.length > 0) {
+        currentQ = data[0]; // 抓取清單中的第一題
+        document.getElementById('q-box').style.display="block";
+        document.getElementById('qt').innerText="題目："+currentQ.q;
+        document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
+        
+        // 🚀 使用圖片信號彈同步大螢幕 B3
+        syncBigScreen(currentQ);
+      }
+    }).catch(e => {
+        rD.innerHTML = "❌ 抽題失敗，請檢查網址";
+        document.getElementById('drawBtn').disabled = false;
+    });
+  }
 
-    <button class="btn" id="loadBtn" onclick="startTest()" style="background:#f39c12;">🎯 載入測試題目</button>
-    <button class="btn" id="nextBtn" onclick="sendToGoogle()" style="background:#3498db; display:none;">⏭️ 傳送至大螢幕</button>
+  function syncBigScreen(q) {
+    let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
+    
+    let img = new Image();
+    img.onload = img.onerror = function() {
+        rD.innerHTML = "✅ 題目更新成功！大螢幕已連動！";
+        document.getElementById('drawBtn').disabled = false;
+        scannedMap = {}; // 換題後清空已掃描紀錄
+    };
+    img.src = syncUrl;
+  }
 
-    <div class="debug-info">
-        <strong>目前使用的網址：</strong><br>
-        <span id="debug-url">尚未設定</span>
-    </div>
+  // 2. 掃描邏輯
+  function startScan(){
+    if(scanActive) return;
+    if(typeof AR === 'undefined') { alert("辨識引擎載入失敗"); return; }
+    rD.innerHTML = "⏳ 正在啟動相機...";
+    det = new AR.Detector();
+    navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
+    .then(function(s){
+      v.srcObject=s; v.style.display="block"; scanActive=true;
+      rD.innerHTML = "🎥 相機已啟動，請掃描學生紙卡！";
+      var btn = document.getElementById('startBtn');
+      btn.innerText = "🛑 停止掃描"; btn.style.background = "#e74c3c"; btn.onclick = stopScan;
+      tick();
+    })
+    .catch(function(e){ alert("相機開啟失敗: " + e.message); });
+  }
 
-    <script>
-        // 👇 請在這裡貼上您複製的 Google 網址 (結尾必須是 /exec) 👇
-        const API_URL = "https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec";
+  function stopScan(){
+    scanActive=false; v.style.display="none";
+    if(v.srcObject){ v.srcObject.getTracks().forEach(function(t){ t.stop(); }); }
+    var btn = document.getElementById('startBtn');
+    btn.innerText = "🎥 2. 開啟連續掃描"; btn.style.background = "#27ae60"; btn.onclick = startScan;
+  }
 
-        document.getElementById('debug-url').innerText = API_URL;
-        let testQ = { q: "連動成功", ans: "O", a: "成功", b: "失敗", c: "再試試", d: "加油" };
+  function tick(){
+    if(!scanActive) return;
+    if(v.readyState === v.HAVE_ENOUGH_DATA){
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      var m=det.detect(ctx.getImageData(0, 0, c.width, c.height));
+      if(m.length > 0){ for(var i=0; i < m.length; i++){ processMarker(m[i]); } }
+    }
+    requestAnimationFrame(tick);
+  }
 
-        function startTest() {
-            document.getElementById('res').innerHTML = "📝 準備傳送測試題目：<br><b>" + testQ.q + "</b>";
-            document.getElementById('loadBtn').style.display = "none";
-            document.getElementById('nextBtn').style.display = "block";
-        }
-
-        function sendToGoogle() {
-            let resDiv = document.getElementById('res');
-            resDiv.innerHTML = "⏳ 正在強力傳送中...";
-            
-            // 🚀 使用最無敵的圖片信號彈技術
-            let finalUrl = API_URL + "?action=setQuestion&q=" + encodeURIComponent(testQ.q) + 
-                           "&ans=" + encodeURIComponent(testQ.ans) + 
-                           "&a=" + encodeURIComponent(testQ.a) + 
-                           "&b=" + encodeURIComponent(testQ.b) + 
-                           "&c=" + encodeURIComponent(testQ.c) + 
-                           "&d=" + encodeURIComponent(testQ.d) + 
-                           "&t=" + new Date().getTime();
-
-            console.log("正在發送：" + finalUrl);
-
-            let img = new Image();
-            img.onload = img.onerror = function() {
-                resDiv.innerHTML = "✅ <b style='color:green'>同步指令已發出！</b><br>請查看大螢幕 B3 是否變成了「連動成功」。";
-            };
-            img.src = finalUrl;
-        }
-    </script>
+  function processMarker(marker){
+    var id = marker.id;
+    if(!scannedMap[id]){
+      scannedMap[id] = true; 
+      var ans = ["A","B","C","D"][marker.rotation];
+      rD.innerHTML = "🔄 傳送中: " + id + " 號選 " + ans + "<br>" + rD.innerHTML;
+      
+      // 🚀 成績傳送也用圖片信號彈
+      let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
+      let img = new Image();
+      img.onload = img.onerror = function() {
+          rD.innerHTML = "✅ " + id + " 號傳送成功！<br>" + rD.innerHTML;
+          setTimeout(() => { delete scannedMap[id]; }, 8000); // 8秒後可重掃
+      };
+      img.src = recUrl;
+    }
+  }
+</script>
 </body>
 </html>
-
