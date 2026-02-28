@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>全班秒刷 (GitHub 解放版)</title>
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
+  <style>
+    body{text-align:center;font-family:sans-serif;background:#f0f0f0;padding:10px;margin:0;}
+    video{width:100%;max-width:500px;border-radius:10px;border:3px solid #333;background:#000;display:none;margin:0 auto;}
+    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:10px;width:90%;margin:10px auto;display:block;cursor:pointer;box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+    #res{font-size:16px;font-weight:bold;margin-top:10px;color:#333;height:120px;overflow-y:auto;text-align:left;padding:10px;background:#fff;border-radius:10px;border:1px solid #ccc;}
+    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;}
+  </style>
+</head>
+<body>
+  <h2>🔥 全班秒刷 (終於自由了！)</h2>
+  <div id="q-box">
+    <b id="qt">題目載入中...</b><br><span id="opts"></span>
+  </div>
+  <button class="btn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
+  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
+  <video id="v" autoplay playsinline webkit-playsinline muted></video>
+  <canvas id="c" style="display:none"></canvas>
+  <div id="res">🟢 系統準備就緒，等待指令！</div>
+
+<script>
+  // 這裡就是老師專屬的大腦連線金鑰！
+  const API_URL = "https://script.google.com/macros/s/AKfycby8UGkeASBpa--qP206HxQf_wNdRbye867Gv16ji1MVN0q9ySE7o2VkOrhTsh2-mnvf/exec";
+  
+  var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
+  var det, scanActive=false, scannedMap = {}; 
+
+  // 1. 抽題功能 (呼叫 API)
+  function drawQ(){
+    rD.innerHTML = "⏳ 抽取題目中...";
+    fetch(API_URL + "?action=getQuestion")
+      .then(res => res.json())
+      .then(q => {
+        if(q && q.q){
+          document.getElementById('q-box').style.display="block";
+          document.getElementById('qt').innerText="題目：" + q.q;
+          document.getElementById('opts').innerText="(A)" + q.a + " (B)" + q.b + " (C)" + q.c + " (D)" + q.d;
+          rD.innerHTML="✅ 題目更新成功！<br>" + rD.innerHTML;
+        } else {
+          rD.innerHTML="⚠️ 題庫可能到底了或沒有題目<br>" + rD.innerHTML;
+        }
+      }).catch(e => { rD.innerHTML = "❌ 連線失敗，請檢查網路<br>" + rD.innerHTML; });
+  }
+
+  // 2. 啟動相機 (這次絕對不會被擋)
+  function startScan(){
+    if(scanActive) return;
+    if(typeof AR === 'undefined') { alert("辨識引擎載入中，請重新整理網頁"); return; }
+    rD.innerHTML = "⏳ 正在啟動相機...";
+    det = new AR.Detector();
+    
+    // 呼叫手機相機
+    navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
+    .then(function(s){
+      v.srcObject=s; v.style.display="block"; scanActive=true; scannedMap = {}; 
+      rD.innerHTML = "🎥 相機已啟動，請對準學生紙卡！<br>" + rD.innerHTML;
+      var btn = document.getElementById('startBtn');
+      btn.innerText = "🛑 停止掃描"; btn.style.background = "#e74c3c"; btn.onclick = stopScan;
+      tick(); // 開始連續偵測
+    })
+    .catch(function(e){ alert("相機啟動失敗：" + e.message); });
+  }
+
+  // 停止相機
+  function stopScan(){
+    scanActive=false; v.style.display="none";
+    if(v.srcObject){ v.srcObject.getTracks().forEach(function(t){ t.stop(); }); }
+    var btn = document.getElementById('startBtn');
+    btn.innerText = "🎥 2. 開啟連續掃描"; btn.style.background = "#27ae60"; btn.onclick = startScan;
+  }
+
+  // 影像辨識循環
+  function tick(){
+    if(!scanActive) return;
+    if(v.readyState === v.HAVE_ENOUGH_DATA){
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      var m=det.detect(ctx.getImageData(0, 0, c.width, c.height));
+      if(m.length > 0){ for(var i=0; i < m.length; i++){ processMarker(m[i]); } }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // 處理抓到的學生答案並傳給 API
+  function processMarker(marker){
+    var id = marker.id;
+    if(!scannedMap[id]){
+      scannedMap[id] = true; // 鎖定該學生，避免重複狂刷
+      var ans = ["A","B","C","D"][marker.rotation];
+      rD.innerHTML = "🔄 抓到 " + id + " 號選 " + ans + "... 傳送中<br>" + rD.innerHTML;
+      
+      fetch(API_URL + "?action=record&id=" + id + "&ans=" + ans)
+        .then(res => res.json())
+        .then(data => { rD.innerHTML = "✅ " + data.message + "<br>" + rD.innerHTML; })
+        .catch(e => { rD.innerHTML = "❌ 傳送失敗<br>" + rD.innerHTML; scannedMap[id] = false; });
+    }
+  }
+</script>
+</body>
+</html>
