@@ -8,7 +8,9 @@
     <script src="https://raw.githack.com/jcmellado/js-aruco/master/src/aruco.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 10px; }
-        .btn { padding: 15px 20px; font-size: 18px; color: white; border: none; border-radius: 10px; margin: 5px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight:bold;}
+        .btn { padding: 15px 20px; font-size: 18px; color: white; border: none; border-radius: 10px; margin: 5px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; font-weight:bold; transition: 0.3s;}
+        /* 增加按鈕被鎖定時的樣式 */
+        .btn:disabled { background: #95a5a6 !important; cursor: not-allowed; }
         #v { width: 100%; max-width: 400px; display: none; border-radius: 10px; border: 3px solid #333; margin: 10px auto; }
         #res { background: #fff; padding: 10px; border-radius: 8px; margin: 10px auto; max-width: 400px; font-weight: bold; border: 1px solid #ccc; font-size:18px;}
         .q-box { display: none; background: #fff; padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 400px; border: 2px solid #f39c12; text-align: left; }
@@ -34,7 +36,7 @@
     <div id="res">🟢 系統準備就緒，請載入測驗！</div>
 
     <script>
-        // 👇👇👇 這裡請務必換成妳的「全新 Google 網址」 👇👇👇
+        // 👇 這裡請貼上妳的「全新 Google 網址」 👇
         const API_URL = "https://script.google.com/macros/s/AKfycbwgRB1Jk9cmFZex2Mxxoid2fotdFmKpAb60LCuwXWz7JCTtOa6R-nPef-Y0UyMK-Bbj/exec";
 
         var v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d'), rD = document.getElementById('res');
@@ -43,7 +45,8 @@
 
         function startQuiz() {
             rD.innerHTML = "⏳ 正在從題庫抽取題目...";
-            fetch(API_URL + "?action=getQuiz")
+            // 🌟 加上時間戳記 t=... 徹底防止 Safari 偷懶快取
+            fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
             .then(res => res.json())
             .then(data => {
                 if(data.length === 0) {
@@ -53,12 +56,14 @@
                 quizQs = data; currQIndex = -1;
                 document.getElementById('startQuizBtn').style.display = "none";
                 document.getElementById('nextBtn').style.display = "inline-block";
-                nextQuestion(); // 自動進入第一題
-            }).catch(e => rD.innerHTML = "❌ 網路錯誤");
+                nextQuestion(); 
+            }).catch(e => rD.innerHTML = "❌ 網路錯誤或網址不對");
         }
 
         function nextQuestion() {
             currQIndex++;
+            let scanBtn = document.getElementById('startBtn');
+            
             if(currQIndex >= quizQs.length) {
                 document.getElementById('q-progress').innerText = "🎉 測驗結束！";
                 document.getElementById('qt').innerText = "請看大螢幕排行榜結算成績！";
@@ -68,11 +73,10 @@
                 document.getElementById('startQuizBtn').innerText = "🔄 重新載入新測驗";
                 rD.innerHTML = "✅ 本次測驗已全部完成";
                 
-                // 考完自動關閉相機
                 if(scanActive) {
                     scanActive = false; v.style.display = "none";
-                    document.getElementById('startBtn').innerText = "🎥 2. 開啟連續掃描";
-                    document.getElementById('startBtn').style.background = "#27ae60";
+                    scanBtn.innerText = "🎥 2. 開啟連續掃描";
+                    scanBtn.style.background = "#27ae60";
                 }
                 return;
             }
@@ -82,22 +86,39 @@
             document.getElementById('q-progress').innerText = `📝 第 ${currQIndex + 1} / ${quizQs.length} 題`;
             document.getElementById('qt').innerText = "題目：" + q.q;
             document.getElementById('opts').innerHTML = `(A) ${q.a} <br>(B) ${q.b} <br>(C) ${q.c} <br>(D) ${q.d}`;
+            
+            // 🔒 鎖定掃描按鈕，強迫等待大腦把題目寫好
+            scanBtn.disabled = true;
+            scanBtn.innerText = "⏳ 等待大腦換題...";
             rD.innerHTML = "⏳ 正在通知大腦切換題目...";
 
-            // 把這題傳給 Google 大腦
-            let url = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}`;
+            // 🌟 加上時間戳記 t=... 防止 Safari 偷懶
+            let url = `${API_URL}?action=setQuestion&q=${encodeURIComponent(q.q)}&a=${encodeURIComponent(q.a)}&b=${encodeURIComponent(q.b)}&c=${encodeURIComponent(q.c)}&d=${encodeURIComponent(q.d)}&ans=${encodeURIComponent(q.ans)}&t=${new Date().getTime()}`;
 
             fetch(url).then(res => res.json()).then(d => {
                 rD.innerHTML = `✅ 題目切換成功！可以開始掃描囉！`;
-                scannedMap = {}; // 🌟 最重要的一行：清空上一題的已掃描紀錄，讓全班能回答新題目！
+                scannedMap = {}; // 清空上一題
+                
+                // 🔓 大腦寫好了，解鎖掃描按鈕！
+                scanBtn.disabled = false;
+                if(scanActive) {
+                    scanBtn.innerText = "🛑 停止掃描";
+                } else {
+                    scanBtn.innerText = "🎥 2. 開啟連續掃描";
+                }
+            }).catch(e => {
+                rD.innerHTML = `❌ 換題失敗，請檢查網路`;
+                scanBtn.disabled = false;
+                scanBtn.innerText = "🎥 2. 開啟連續掃描";
             });
         }
 
         function startScan() {
+            let scanBtn = document.getElementById('startBtn');
             if(scanActive) {
                 scanActive = false; v.style.display = "none";
-                document.getElementById('startBtn').innerText = "🎥 2. 開啟連續掃描";
-                document.getElementById('startBtn').style.background = "#27ae60";
+                scanBtn.innerText = "🎥 2. 開啟連續掃描";
+                scanBtn.style.background = "#27ae60";
                 return;
             }
             if(typeof AR === 'undefined') { alert("辨識引擎載入失敗，請重整網頁"); return; }
@@ -105,8 +126,8 @@
             navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}}).then(function(s) {
                 v.srcObject = s; v.style.display = "block"; scanActive = true;
                 rD.innerHTML = "🎥 相機已啟動，請對準學生紙卡！";
-                document.getElementById('startBtn').innerText = "🛑 停止掃描";
-                document.getElementById('startBtn').style.background = "#e74c3c";
+                scanBtn.innerText = "🛑 停止掃描";
+                scanBtn.style.background = "#e74c3c";
                 requestAnimationFrame(tick);
             });
         }
@@ -132,12 +153,16 @@
                     if(!scannedMap[id]) {
                         scannedMap[id] = true;
                         rD.innerHTML = `🔄 抓到 ${id} 號選 ${ans}... 傳送中`;
-                        fetch(`${API_URL}?action=record&id=${id}&ans=${ans}`)
+                        
+                        // 🌟 傳送成績也加上時間戳記防快取
+                        fetch(`${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`)
                         .then(res => res.json())
                         .then(data => {
                             rD.innerHTML = `✅ ${data.message}`;
-                            // 10秒後允許學生如果舉錯了可以重掃修改答案
                             setTimeout(() => { delete scannedMap[id]; }, 10000); 
+                        }).catch(e => {
+                            rD.innerHTML = `❌ 傳送失敗，請重掃`;
+                            delete scannedMap[id];
                         });
                     }
                 }
