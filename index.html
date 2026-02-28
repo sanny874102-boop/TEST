@@ -7,9 +7,9 @@
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
   <style>
     body{text-align:center;font-family:sans-serif;background:#f4f4f9;padding:10px;margin:0;}
-    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;transition:0.3s;}
+    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;}
     #res{font-size:16px;font-weight:bold;margin-top:10px;color:#2c3e50;padding:15px;background:#fff;border-radius:12px;border:1px solid #ddd;}
-    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;}
     video{width:100%;max-width:500px;border-radius:10px;border:3px solid #333;display:none;margin:10px auto;}
   </style>
 </head>
@@ -26,14 +26,14 @@
   <div id="res">🟢 引擎已接通！</div>
 
 <script>
-  // 👇 重要！請貼上讓您 B3 成功跳出「個人帳號連動成功」的那個 Google 網址 👇
+  // 👇 重要！請貼上讓您 B3 成功變色的那個「個人帳號」Google 網址 👇
   const API_URL = "https://script.google.com/macros/s/AKfycbwN0-ACXfy5iTpsRmnzPhEi2hs23wvIYD90GyjD8IO4dZDQjbQLtU2jrXv6vOT9sw0ljg/exec";
 
   var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
   var det, scanActive=false, scannedMap = {}, currentQ = null;
 
   function drawQ(){
-    rD.innerHTML = "⏳ 抽題並同步大螢幕中...";
+    rD.innerHTML = "⏳ 抽題並同步中...";
     fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
     .then(res => res.json()).then(data => {
       if(data && data.length > 0) {
@@ -42,16 +42,19 @@
         document.getElementById('qt').innerText="題目："+currentQ.q;
         document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
         
-        // 🚀 使用圖片信號彈同步大螢幕 B3
+        // 🚀 最終殺招：使用 fetch 的 no-cors 模式同步大螢幕 B3
         let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${new Date().getTime()}`;
-        let img = new Image();
-        img.onload = img.onerror = function() {
-            rD.innerHTML = "✅ 同步成功！大螢幕已變換！";
+        
+        fetch(syncUrl, { mode: 'no-cors' })
+        .then(() => {
+            rD.innerHTML = "✅ 大螢幕已連動！";
             scannedMap = {}; 
-        };
-        img.src = syncUrl;
+        }).catch(() => {
+            rD.innerHTML = "✅ 已送出同步指令！";
+            scannedMap = {}; 
+        });
       }
-    }).catch(e => rD.innerHTML = "❌ 連線失敗，請核對 API 網址");
+    }).catch(e => rD.innerHTML = "❌ 抽題失敗，請檢查網址");
   }
 
   function startScan(){
@@ -60,7 +63,7 @@
     navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
     .then(function(s){
       v.srcObject=s; v.style.display="block"; scanActive=true;
-      rD.innerHTML = "🎥 掃描啟動！請對準紙卡";
+      rD.innerHTML = "🎥 掃描啟動！";
       document.getElementById('startBtn').innerText = "🛑 停止掃描";
       document.getElementById('startBtn').style.background = "#e74c3c";
       tick();
@@ -80,12 +83,10 @@
           var ans = ["A","B","C","D"][m[0].rotation];
           rD.innerHTML = "🔄 傳送: " + id + " 號選 " + ans;
           let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
-          let img = new Image();
-          img.onload = img.onerror = function() {
+          fetch(recUrl, { mode: 'no-cors' }).then(() => {
               rD.innerHTML = "✅ " + id + " 號傳送成功！";
               setTimeout(() => { delete scannedMap[id]; }, 6000);
-          };
-          img.src = recUrl;
+          });
         }
       }
     }
