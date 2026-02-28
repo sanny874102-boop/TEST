@@ -2,57 +2,95 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>🔥 全班秒刷-全透明除錯版</title>
+  <title>🔥 全班秒刷-個人帳號最終版</title>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
   <style>
-    body{text-align:center;font-family:sans-serif;background:#f0f0f0;padding:10px;margin:0;}
-    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:10px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;}
-    #res{font-size:16px;font-weight:bold;margin-top:10px;color:#d35400;padding:10px;background:#fff;border-radius:10px;border:1px solid #ccc;}
-    /* 🕵️ 監視小視窗樣式 */
-    #monitor-box { width: 90%; height: 100px; margin: 10px auto; border: 2px solid #333; background: #eee; border-radius: 10px; overflow: hidden; }
-    iframe { width: 100%; height: 100%; border: none; }
+    body{text-align:center;font-family:sans-serif;background:#f4f4f9;padding:10px;margin:0;}
+    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;transition:0.3s;}
+    #res{font-size:16px;font-weight:bold;margin-top:10px;color:#2c3e50;padding:15px;background:#fff;border-radius:12px;border:1px solid #ddd;}
+    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+    video{width:100%;max-width:500px;border-radius:10px;border:3px solid #333;display:none;margin:10px auto;}
   </style>
 </head>
 <body>
-  <h2>🔥 個人帳號版 - 測試 1 </h2>
-  
-  <div id="res">🟢 請先按「載入測試」</div>
-
-  <button class="btn" onclick="prepareTest()" style="background:#f39c12;">🎲 1. 準備測試題目</button>
-  <button class="btn" id="syncBtn" onclick="sendTest()" style="background:#3498db; display:none;">⏭️ 2. 發射到大螢幕</button>
-
-  <p style="font-size:12px; color:red;">👇 以下是 Google 大腦的真實反應視窗 👇</p>
-  <div id="monitor-box">
-    <iframe id="monitor" name="monitor"></iframe>
+  <h2>🔥 全班秒刷測驗 (個人版)</h2>
+  <div id="q-box">
+    <b id="qt" style="font-size:22px;color:#d35400;">題目載入中...</b><br>
+    <div id="opts" style="font-size:18px;line-height:1.6;"></div>
   </div>
+  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
+  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
+  <video id="v" autoplay playsinline webkit-playsinline muted></video>
+  <canvas id="c" style="display:none"></canvas>
+  <div id="res">🟢 引擎已接通！</div>
 
 <script>
-  // 👇 重要！請貼上讓您 B3 變色成功的那個 Google 部署網址 👇
+  // 👇 重要！請貼上讓您 B3 成功跳出「個人帳號連動成功」的那個 Google 網址 👇
   const API_URL = "https://script.google.com/macros/s/AKfycbwN0-ACXfy5iTpsRmnzPhEi2hs23wvIYD90GyjD8IO4dZDQjbQLtU2jrXv6vOT9sw0ljg/exec";
 
-  function prepareTest(){
-    document.getElementById('res').innerHTML = "📝 已準備測試內容：<b>連動成功</b>";
-    document.getElementById('syncBtn').style.display = "block";
+  var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
+  var det, scanActive=false, scannedMap = {}, currentQ = null;
+
+  function drawQ(){
+    rD.innerHTML = "⏳ 抽題並同步大螢幕中...";
+    fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
+    .then(res => res.json()).then(data => {
+      if(data && data.length > 0) {
+        currentQ = data[0];
+        document.getElementById('q-box').style.display="block";
+        document.getElementById('qt').innerText="題目："+currentQ.q;
+        document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
+        
+        // 🚀 使用圖片信號彈同步大螢幕 B3
+        let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${new Date().getTime()}`;
+        let img = new Image();
+        img.onload = img.onerror = function() {
+            rD.innerHTML = "✅ 同步成功！大螢幕已變換！";
+            scannedMap = {}; 
+        };
+        img.src = syncUrl;
+      }
+    }).catch(e => rD.innerHTML = "❌ 連線失敗，請核對 API 網址");
   }
 
-  function sendTest() {
-    document.getElementById('res').innerHTML = "⏳ 正在強力發射...";
-    
-    // 構建測試網址
-    let testUrl = API_URL + "?action=setQuestion&q=" + encodeURIComponent("連動成功") + 
-                  "&ans=A&a=成功&b=失敗&c=再試&d=加油&t=" + new Date().getTime();
+  function startScan(){
+    if(scanActive) return;
+    det = new AR.Detector();
+    navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
+    .then(function(s){
+      v.srcObject=s; v.style.display="block"; scanActive=true;
+      rD.innerHTML = "🎥 掃描啟動！請對準紙卡";
+      document.getElementById('startBtn').innerText = "🛑 停止掃描";
+      document.getElementById('startBtn').style.background = "#e74c3c";
+      tick();
+    });
+  }
 
-    // 🚀 使用 iframe 直接打開網址，Safari 絕對無法攔截，且我們能看到結果！
-    document.getElementById('monitor').src = testUrl;
-
-    setTimeout(() => {
-        document.getElementById('res').innerHTML = "✅ 指令已送達！請查看 B3 有沒有變！";
-    }, 2000);
+  function tick(){
+    if(!scanActive) return;
+    if(v.readyState === v.HAVE_ENOUGH_DATA){
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      var m=det.detect(ctx.getImageData(0, 0, c.width, c.height));
+      if(m.length > 0){
+        var id = m[0].id;
+        if(!scannedMap[id]){
+          scannedMap[id] = true;
+          var ans = ["A","B","C","D"][m[0].rotation];
+          rD.innerHTML = "🔄 傳送: " + id + " 號選 " + ans;
+          let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
+          let img = new Image();
+          img.onload = img.onerror = function() {
+              rD.innerHTML = "✅ " + id + " 號傳送成功！";
+              setTimeout(() => { delete scannedMap[id]; }, 6000);
+          };
+          img.src = recUrl;
+        }
+      }
+    }
+    requestAnimationFrame(tick);
   }
 </script>
 </body>
 </html>
-
-
-
