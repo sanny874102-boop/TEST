@@ -2,55 +2,102 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 全班秒刷 (終極修復版)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>📱 全班秒刷 (行動智慧版)</title>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
   <style>
-    body{text-align:center;font-family:sans-serif;background:#f4f4f9;padding:10px;}
-    .btn{font-size:20px;padding:15px;color:white;border:none;border-radius:12px;width:90%;margin:10px auto;display:block;cursor:pointer;font-weight:bold;}
-    #res{font-size:16px;font-weight:bold;margin-top:10px;padding:15px;background:#fff;border-radius:12px;border:1px solid #ddd;}
-    #q-box{background:white;padding:15px;border-radius:10px;margin-bottom:10px;text-align:left;display:none;border:2px solid #f39c12;}
+    body { font-family: -apple-system, sans-serif; background: #f0f2f5; text-align: center; margin: 0; padding: 15px; }
+    #q-box { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 15px; min-height: 120px; }
+    #qt { font-size: 24px; color: #d35400; font-weight: bold; }
+    #opts { font-size: 18px; text-align: left; margin-top: 10px; color: #444; }
+    .btn { width: 100%; font-size: 20px; padding: 18px; border-radius: 12px; border: none; color: white; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+    video { width: 100%; border-radius: 15px; background: #000; display: none; margin-top: 10px; }
+    #res { font-size: 18px; font-weight: bold; margin-top: 10px; padding: 10px; color: #27ae60; }
   </style>
 </head>
 <body>
-  <h2>🔥 全班秒刷 (終極修復版)</h2>
-  <div id="q-box">
-    <b id="qt" style="font-size:22px;color:#d35400;">等待抽題...</b><br>
-    <div id="opts" style="font-size:18px;line-height:1.6;"></div>
-  </div>
-  <button class="btn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
-  <button class="btn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開始掃描</button>
-  <div id="res">🟢 引擎已就緒</div>
+
+<div id="q-box">
+  <div id="qt">準備就緒</div>
+  <div id="opts">請點擊「隨機抽題」開始</div>
+</div>
+
+<button class="btn" style="background:#f39c12;" onclick="drawQ()">🎲 1. 隨機抽題 (同步大螢幕)</button>
+<button class="btn" id="camBtn" style="background:#27ae60;" onclick="startScan()">🎥 2. 開啟後鏡頭掃描</button>
+
+<video id="v" autoplay playsinline muted webkit-playsinline></video>
+<canvas id="c" style="display:none"></canvas>
+<div id="res">🟢 系統待命</div>
 
 <script>
-  // 🌟 已填入您剛才提供的正確門牌
+  // 🌟 使用您提供的正確 Apps Script 網址
   const API_URL = "https://script.google.com/macros/s/AKfycbwRLe2VvIOZLRlQVNy2VM6eKR13gYDc2mXDpeZuZNL9tDtmdVBkHJZAXeyuDQ9u4n0aVQ/exec";
 
-  var currentQ = null, rD = document.getElementById('res');
+  var v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d'), rD = document.getElementById('res');
+  var detector, scanActive = false, currentQ = null, scannedMap = {};
 
-  function drawQ(){
-    rD.innerHTML = "⏳ 正在抽題...";
+  // 1. 抽題並連動大螢幕
+  function drawQ() {
+    rD.innerHTML = "⏳ 正在抽題並連動...";
     fetch(API_URL + "?action=getQuiz&t=" + Date.now())
     .then(res => res.json()).then(data => {
       currentQ = data[0];
-      document.getElementById('q-box').style.display="block";
-      document.getElementById('qt').innerText="題目："+currentQ.q;
-      document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
+      document.getElementById('qt').innerText = "題目：" + currentQ.q;
+      document.getElementById('opts').innerHTML = "(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
       
-      rD.innerHTML = "🚀 同步發射中...";
-      
-      // 🌟 強力發射連動信號
+      // 🌟 同時發射指令給試算表 Settings 分頁
       let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${Date.now()}`;
       
-      fetch(syncUrl, {mode: 'no-cors'}).then(() => {
-        rD.innerHTML = "✅ 指令已送出！請看大螢幕 B3！";
-      }).catch(err => {
-        rD.innerHTML = "❌ 同步失敗：" + err;
-      });
+      // 使用強力發射模式
+      fetch(syncUrl, {mode: 'no-cors'});
+      
+      rD.innerHTML = "✅ 同步成功！請看試算表 B3";
+      scannedMap = {}; 
     });
   }
 
-  function startScan() { alert("請先確認連動成功再啟動掃描"); }
+  // 2. 開啟手機後鏡頭
+  async function startScan() {
+    if(scanActive) return;
+    detector = new AR.Detector();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" } // 🌟 強制指定後鏡頭
+      });
+      v.srcObject = stream;
+      v.style.display = "block";
+      scanActive = true;
+      document.getElementById('camBtn').innerText = "🛑 停止掃描";
+      rD.innerHTML = "🎥 掃描中，請對準學生的 Aruco 卡片";
+      tick();
+    } catch (err) {
+      alert("無法啟動相機，請確認已允許瀏覽器權限。");
+    }
+  }
+
+  function tick() {
+    if(!scanActive) return;
+    if(v.readyState === v.HAVE_ENOUGH_DATA){
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      var markers = detector.detect(ctx.getImageData(0, 0, c.width, c.height));
+      if(markers.length > 0){
+        var id = markers[0].id;
+        if(!scannedMap[id]){
+          scannedMap[id] = true;
+          var ans = ["A","B","C","D"][markers[0].rotation];
+          
+          // 紀錄成績回 Responses 工作表
+          fetch(`${API_URL}?action=record&id=${id}&ans=${ans}&t=${Date.now()}`, {mode:'no-cors'});
+          
+          rD.innerHTML = (ans === currentQ.ans) ? `✅ ${id} 號：答對了！` : `❌ ${id} 號：選了 ${ans}`;
+          setTimeout(() => { delete scannedMap[id]; }, 4000);
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
 </script>
 </body>
 </html>
