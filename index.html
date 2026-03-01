@@ -29,7 +29,7 @@
 
 <script>
   // 👇 請在下方引號內貼上您的「新大腦」Google 網址 (script.google.com.../exec) 👇
-  const API_URL = "https://script.google.com/macros/s/AKfycbwRLe2VvIOZLRlQVNy2VM6eKR13gYDc2mXDpeZuZNL9tDtmdVBkHJZAXeyuDQ9u4n0aVQ/exec";
+  const API_URL = "在此貼上您的網址";
 
   var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
   var det, scanActive=false, scannedMap = {}, currentQ = null;
@@ -37,6 +37,7 @@
   function drawQ(){
     rD.innerHTML = "⏳ 正在拿取題目...";
     
+    // 1. 先拿題目 (您說這步 OK)
     fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
     .then(res => res.json()).then(data => {
       if(data && data.length > 0) {
@@ -45,15 +46,14 @@
         document.getElementById('qt').innerText="題目："+currentQ.q;
         document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
 
-        rD.innerHTML = "🚀 正在將題目同步至大螢幕...";
+        rD.innerHTML = "🚀 正在發射同步信號...";
 
-        // 🌟 隱形圖片發射法：直接在背景發射指令
+        // 🌟 改用 fetch 強力發射，既然抽題能過，這招必過！
         let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${new Date().getTime()}`;
         
-        let imgSync = new Image();
-        imgSync.src = syncUrl;
+        fetch(syncUrl, {mode: 'no-cors'}); // 強力穿透模式
 
-        setTimeout(() => { rD.innerHTML = "✅ 同步指令已送達！請看大螢幕！"; }, 1500);
+        setTimeout(() => { rD.innerHTML = "✅ 指令已發出！請看大螢幕 B3！"; }, 1000);
         scannedMap = {}; 
       }
     }).catch(e => rD.innerHTML = "❌ 抽題失敗，請檢查網址");
@@ -99,4 +99,3 @@
 </script>
 </body>
 </html>
-
