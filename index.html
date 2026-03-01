@@ -26,54 +26,45 @@
 <button class="btn" style="background:#f39c12;" onclick="drawQ()">🎲 1. 隨機抽題 (同步大螢幕)</button>
 <button class="btn" id="camBtn" style="background:#27ae60;" onclick="startScan()">🎥 2. 開啟後鏡頭掃描</button>
 
-<video id="v" autoplay playsinline muted webkit-playsinline></video>
+<video id="v" autoplay playsinline muted></video>
 <canvas id="c" style="display:none"></canvas>
 <div id="res">🟢 系統待命</div>
 
 <script>
-  // 🌟 使用您提供的正確 Apps Script 網址
-  const API_URL = "https://script.google.com/macros/s/AKfycbzqlppPJVGgej5JnqsONyeiiqE7v-_dDT9MrckpmJIJrXioQg4OcwG42Ix0OFE_GASo/exec";
+  // 🌟 請換成您剛剛「新增部署」後取得的那串新網址
+  const API_URL = "https://script.google.com/macros/s/AKfycbzClQ6z9A-jJ8Lgde-Zavjd5j23RX089zf3hembBqavOUQVq5KQDohaiwoBcbBeegDY/exec";
 
   var v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d'), rD = document.getElementById('res');
   var detector, scanActive = false, currentQ = null, scannedMap = {};
 
-  // 1. 抽題並連動大螢幕
+  function sendSignal(params) {
+    var img = new Image();
+    img.src = API_URL + "?" + params + "&t=" + Date.now();
+  }
+
   function drawQ() {
-    rD.innerHTML = "⏳ 正在抽題並連動...";
+    rD.innerHTML = "⏳ 抽題連動中...";
     fetch(API_URL + "?action=getQuiz&t=" + Date.now())
     .then(res => res.json()).then(data => {
       currentQ = data[0];
       document.getElementById('qt').innerText = "題目：" + currentQ.q;
-      document.getElementById('opts').innerHTML = "(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
+      document.getElementById('opts').innerHTML = `(A) ${currentQ.a}<br>(B) ${currentQ.b}<br>(C) ${currentQ.c}<br>(D) ${currentQ.d}`;
       
-      // 🌟 同時發射指令給試算表 Settings 分頁
-      let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${Date.now()}`;
+      let p = `action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}`;
+      sendSignal(p);
       
-      // 使用強力發射模式
-      fetch(syncUrl, {mode: 'no-cors'});
-      
-      rD.innerHTML = "✅ 同步成功！請看試算表 B3";
+      rD.innerHTML = "✅ 同步成功！";
       scannedMap = {}; 
     });
   }
 
-  // 2. 開啟手機後鏡頭
   async function startScan() {
     if(scanActive) return;
     detector = new AR.Detector();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } // 🌟 強制指定後鏡頭
-      });
-      v.srcObject = stream;
-      v.style.display = "block";
-      scanActive = true;
-      document.getElementById('camBtn').innerText = "🛑 停止掃描";
-      rD.innerHTML = "🎥 掃描中，請對準學生的 Aruco 卡片";
-      tick();
-    } catch (err) {
-      alert("無法啟動相機，請確認已允許瀏覽器權限。");
-    }
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    v.srcObject = stream; v.style.display = "block";
+    scanActive = true; document.getElementById('camBtn').innerText = "🛑 停止掃描";
+    tick();
   }
 
   function tick() {
@@ -87,12 +78,9 @@
         if(!scannedMap[id]){
           scannedMap[id] = true;
           var ans = ["A","B","C","D"][markers[0].rotation];
-          
-          // 紀錄成績回 Responses 工作表
-          fetch(`${API_URL}?action=record&id=${id}&ans=${ans}&t=${Date.now()}`, {mode:'no-cors'});
-          
+          sendSignal(`action=record&id=${id}&ans=${ans}`);
           rD.innerHTML = (ans === currentQ.ans) ? `✅ ${id} 號：答對了！` : `❌ ${id} 號：選了 ${ans}`;
-          setTimeout(() => { delete scannedMap[id]; }, 4000);
+          setTimeout(() => { delete scannedMap[id]; }, 3000);
         }
       }
     }
@@ -101,10 +89,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
