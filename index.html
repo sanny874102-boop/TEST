@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 全班秒刷 (終極紫鈕版)</title>
+  <title>🔥 全班秒刷 (終極無縫版)</title>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/cv.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco@master/src/aruco.js"></script>
   <style>
@@ -14,24 +14,21 @@
   </style>
 </head>
 <body>
-  <h2>🔥 全班秒刷 (終極紫鈕版)</h2>
+  <h2 id="v-title">🔥 全班秒刷 (終極無縫版)</h2>
   <div id="q-box">
     <b id="qt" style="font-size:22px;color:#d35400;">等待抽題中...</b><br>
     <div id="opts" style="font-size:18px;line-height:1.6;"></div>
   </div>
 
-  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 手機抽取題目</button>
-  
-  <a id="syncBtn" href="#" target="_blank" class="btn" style="background:#8e44ad; display:none;">🚀 2. 將題目發射至大螢幕</a>
-  
-  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 3. 開啟相機掃描</button>
+  <button class="btn" id="drawBtn" onclick="drawQ()" style="background:#f39c12;">🎲 1. 隨機抽題</button>
+  <button class="btn" id="startBtn" onclick="startScan()" style="background:#27ae60;">🎥 2. 開啟連續掃描</button>
 
   <video id="v" autoplay playsinline webkit-playsinline muted></video>
   <canvas id="c" style="display:none"></canvas>
-  <div id="res">🟢 準備就緒！</div>
+  <div id="res">🟢 系統已接通純淨大腦！</div>
 
 <script>
-  // 👇 請貼上「個人帳號」Google 網址 👇
+  // 👇 請貼上「個人帳號」的新大腦 Google 網址 👇
   const API_URL = "https://script.google.com/macros/s/AKfycbwLX8XlVEbFlwR4nWUyINux1lNbd4C1MuFfCL9E8djDctdN-kxfyRTZxTxs5GgE4oxANw/exec";
 
   var v=document.getElementById('v'), c=document.getElementById('c'), ctx=c.getContext('2d'), rD=document.getElementById('res');
@@ -39,7 +36,6 @@
 
   function drawQ(){
     rD.innerHTML = "⏳ 正在拿取題目...";
-    document.getElementById('syncBtn').style.display = "none";
     
     fetch(API_URL + "?action=getQuiz&t=" + new Date().getTime())
     .then(res => res.json()).then(data => {
@@ -49,21 +45,21 @@
         document.getElementById('qt').innerText="題目："+currentQ.q;
         document.getElementById('opts').innerHTML="(A) "+currentQ.a+"<br>(B) "+currentQ.b+"<br>(C) "+currentQ.c+"<br>(D) "+currentQ.d;
 
-        // 將同步指令直接綁定到實體按鈕上
+        rD.innerHTML = "🚀 正在將題目無縫同步至大螢幕...";
+
+        // 🌟 終極隱形發射：不開新分頁、不惹 Safari 生氣，直接在背景把指令傳進大腦！
         let syncUrl = `${API_URL}?action=setQuestion&q=${encodeURIComponent(currentQ.q)}&a=${encodeURIComponent(currentQ.a)}&b=${encodeURIComponent(currentQ.b)}&c=${encodeURIComponent(currentQ.c)}&d=${encodeURIComponent(currentQ.d)}&ans=${encodeURIComponent(currentQ.ans)}&t=${new Date().getTime()}`;
         
-        let sBtn = document.getElementById('syncBtn');
-        sBtn.href = syncUrl;
-        sBtn.style.display = "block"; // 顯示紫色按鈕
+        let imgSync = new Image();
+        imgSync.src = syncUrl;
 
-        rD.innerHTML = "✅ 題目已抽出！請按紫色按鈕發射！";
+        setTimeout(() => { rD.innerHTML = "✅ 同步指令已送達！請看大螢幕！"; }, 1500);
         scannedMap = {}; 
       }
     }).catch(e => rD.innerHTML = "❌ 抽題失敗，請檢查網址");
   }
 
   function startScan(){
-    // ... 原本的相機程式碼完全一樣 ...
     if(scanActive) return;
     det = new AR.Detector();
     navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
@@ -90,8 +86,10 @@
           rD.innerHTML = "🔄 傳送: " + id + " 號選 " + ans;
           
           let recUrl = `${API_URL}?action=record&id=${id}&ans=${ans}&t=${new Date().getTime()}`;
-          let img = new Image();
-          img.src = recUrl;
+          
+          // 🌟 成績也用隱形發射
+          let imgRec = new Image();
+          imgRec.src = recUrl;
 
           rD.innerHTML = "✅ " + id + " 號送出！";
           setTimeout(() => { delete scannedMap[id]; }, 6000);
@@ -103,4 +101,3 @@
 </script>
 </body>
 </html>
-
